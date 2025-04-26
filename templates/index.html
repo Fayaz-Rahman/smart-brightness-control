@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Eye Monitor</title>
+</head>
+<body>
+    <h1>Smart Eye Monitor</h1>
+
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" name="file" accept="image/*" required>
+        <button type="submit">Upload and Check</button>
+    </form>
+
+    {% if blink %}
+        <h2>Result: {{ blink }}</h2>
+    {% endif %}
+</body>
+</html>
