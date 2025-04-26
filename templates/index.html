@@ -2,18 +2,205 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Eye Monitor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 30px 0;
+        }
+        .stat-box {
+            background-color: #3498db;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 120px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        #pauseBtn {
+            background-color: #e74c3c;
+            color: white;
+        }
+        #pauseBtn.paused {
+            background-color: #2ecc71;
+        }
+        #resetBtn {
+            background-color: #f39c12;
+            color: white;
+        }
+        .brightness-control {
+            margin-top: 30px;
+            text-align: center;
+        }
+        .brightness-slider {
+            width: 80%;
+            margin: 15px auto;
+        }
+        .face-status {
+            text-align: center;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .face-detected {
+            color: #27ae60;
+        }
+        .face-not-detected {
+            color: #e74c3c;
+        }
+    </style>
 </head>
 <body>
-    <h1>Smart Eye Monitor</h1>
+    <div class="container">
+        <h1>Smart Eye Monitor</h1>
+        
+        <div class="face-status" id="faceStatus">
+            Face: <span id="faceStatusText">Not Detected</span>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-box">
+                <div>Blinks</div>
+                <div class="stat-value" id="blinkCount">0</div>
+            </div>
+            <div class="stat-box">
+                <div>Brightness</div>
+                <div class="stat-value" id="brightnessValue">100%</div>
+            </div>
+            <div class="stat-box">
+                <div>Timer</div>
+                <div class="stat-value" id="timerValue">0s</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="pauseBtn">Pause</button>
+            <button id="resetBtn">Reset Count</button>
+        </div>
+        
+        <div class="brightness-control">
+            <h3>Screen Brightness</h3>
+            <input type="range" min="0" max="100" value="100" class="brightness-slider" id="brightnessSlider">
+            <button id="setBrightnessBtn">Apply Brightness</button>
+        </div>
+    </div>
 
-    <form method="post" enctype="multipart/form-data">
-        <input type="file" name="file" accept="image/*" required>
-        <button type="submit">Upload and Check</button>
-    </form>
+    <script>
+        // DOM elements
+        const blinkCountEl = document.getElementById('blinkCount');
+        const brightnessValueEl = document.getElementById('brightnessValue');
+        const timerValueEl = document.getElementById('timerValue');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const brightnessSlider = document.getElementById('brightnessSlider');
+        const setBrightnessBtn = document.getElementById('setBrightnessBtn');
+        const faceStatusText = document.getElementById('faceStatusText');
+        const faceStatus = document.getElementById('faceStatus');
 
-    {% if blink %}
-        <h2>Result: {{ blink }}</h2>
-    {% endif %}
+        // Update status from server
+        function updateStatus() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    blinkCountEl.textContent = data.blink_count;
+                    brightnessValueEl.textContent = data.brightness + '%';
+                    timerValueEl.textContent = data.timer + 's';
+                    brightnessSlider.value = data.brightness;
+                    
+                    if (data.paused) {
+                        pauseBtn.textContent = 'Resume';
+                        pauseBtn.classList.add('paused');
+                    } else {
+                        pauseBtn.textContent = 'Pause';
+                        pauseBtn.classList.remove('paused');
+                    }
+                    
+                    if (data.face_present) {
+                        faceStatusText.textContent = 'Detected';
+                        faceStatusText.className = 'face-detected';
+                    } else {
+                        faceStatusText.textContent = 'Not Detected';
+                        faceStatusText.className = 'face-not-detected';
+                    }
+                });
+        }
+
+        // Event listeners
+        pauseBtn.addEventListener('click', () => {
+            fetch('/control', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({action: 'toggle_pause'})
+            });
+        });
+
+        resetBtn.addEventListener('click', () => {
+            fetch('/control', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({action: 'reset'})
+            });
+        });
+
+        setBrightnessBtn.addEventListener('click', () => {
+            const brightness = parseInt(brightnessSlider.value);
+            fetch('/control', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'set_brightness',
+                    brightness: brightness
+                })
+            });
+        });
+
+        // Update every second
+        setInterval(updateStatus, 1000);
+        
+        // Initial update
+        updateStatus();
+    </script>
 </body>
 </html>
